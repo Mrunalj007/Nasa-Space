@@ -12,7 +12,7 @@ export default function Policy() {
   const { toast } = useToast();
 
   const { data: metricsData } = useQuery({
-    queryKey: ["/api/nasa/metrics", location],
+    queryKey: [`/api/nasa/metrics?location=${encodeURIComponent(location)}`],
   });
 
   const generateReport = async () => {

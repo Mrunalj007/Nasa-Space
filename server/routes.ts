@@ -102,12 +102,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/simulations", async (req, res) => {
     try {
       const validatedData = insertSimulationSchema.parse(req.body);
-      const simulation = await storage.createSimulation(validatedData);
+      
+      const interventions = validatedData.interventions as Record<string, number>;
+      const predictions = {
+        airQuality: calculateAirQualityImpact(interventions),
+        vegetation: calculateVegetationImpact(interventions),
+        temperature: calculateTemperatureImpact(interventions),
+      };
+      
+      const simulationWithPredictions = {
+        ...validatedData,
+        predictions,
+      };
+      
+      const simulation = await storage.createSimulation(simulationWithPredictions);
       res.json(simulation);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }
   });
+
+  function calculateAirQualityImpact(interventions: Record<string, number>): string {
+    let impact = 0;
+    if (interventions.trees) impact -= interventions.trees * 0.2;
+    if (interventions.renewables) impact -= interventions.renewables * 0.15;
+    if (interventions.housing) impact += interventions.housing * 0.1;
+    
+    if (impact < -10) return `${Math.round(impact)}% improvement (significant)`;
+    if (impact < 0) return `${Math.round(impact)}% improvement`;
+    if (impact > 10) return `${Math.round(impact)}% degradation (concern)`;
+    if (impact > 0) return `${Math.round(impact)}% degradation`;
+    return "No significant change";
+  }
+
+  function calculateVegetationImpact(interventions: Record<string, number>): string {
+    let impact = 0;
+    if (interventions.trees) impact += interventions.trees * 0.008;
+    if (interventions.water) impact += interventions.water * 0.003;
+    if (interventions.housing) impact -= interventions.housing * 0.005;
+    
+    return impact > 0 ? `+${impact.toFixed(3)} NDVI` : `${impact.toFixed(3)} NDVI`;
+  }
+
+  function calculateTemperatureImpact(interventions: Record<string, number>): string {
+    let impact = 0;
+    if (interventions.trees) impact -= interventions.trees * 0.03;
+    if (interventions.water) impact -= interventions.water * 0.05;
+    if (interventions.housing) impact += interventions.housing * 0.02;
+    
+    return impact < 0 ? `${impact.toFixed(1)}°C cooler` : `+${impact.toFixed(1)}°C warmer`;
+  }
 
   app.post("/api/reports/generate", async (req, res) => {
     try {

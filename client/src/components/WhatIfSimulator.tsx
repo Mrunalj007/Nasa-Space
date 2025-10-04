@@ -91,10 +91,16 @@ export function WhatIfSimulator({ className = "" }: { className?: string }) {
         }
       });
 
-      return apiRequest("/api/simulations", "POST", {
+      const interventionNames = Object.keys(activeInterventions).map(id => 
+        interventions.find(i => i.id === id)?.label || id
+      ).join(", ");
+
+      const response = await apiRequest("POST", "/api/simulations", {
+        name: `Scenario: ${interventionNames}`,
         location: "New York",
         interventions: activeInterventions,
       });
+      return await response.json();
     },
     onSuccess: (data) => {
       setSimulationResult(data);

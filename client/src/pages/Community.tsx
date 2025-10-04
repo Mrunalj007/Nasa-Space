@@ -19,8 +19,10 @@ export default function Community() {
   });
 
   const createReportMutation = useMutation({
-    mutationFn: async (data: any) =>
-      apiRequest("/api/community/reports", "POST", data),
+    mutationFn: async (data: any) => {
+      const response = await apiRequest("POST", "/api/community/reports", data);
+      return await response.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/community/reports"] });
       setDialogOpen(false);
@@ -32,8 +34,10 @@ export default function Community() {
   });
 
   const upvoteMutation = useMutation({
-    mutationFn: async (id: string) =>
-      apiRequest(`/api/community/reports/${id}/upvote`, "POST"),
+    mutationFn: async (id: string) => {
+      const response = await apiRequest("POST", `/api/community/reports/${id}/upvote`);
+      return await response.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/community/reports"] });
     },

@@ -35,12 +35,12 @@ export default function Dashboard() {
   const [searchInput, setSearchInput] = useState("");
 
   const { data: metricsData, isLoading: metricsLoading } = useQuery({
-    queryKey: ["/api/nasa/metrics", location],
+    queryKey: [`/api/nasa/metrics?location=${encodeURIComponent(location)}`],
     enabled: !!location,
   });
 
   const { data: chartData } = useQuery({
-    queryKey: ["/api/nasa/historical", location, "aqi", 6],
+    queryKey: [`/api/nasa/historical?location=${encodeURIComponent(location)}&metric=aqi&months=6`],
     enabled: !!location,
   });
 

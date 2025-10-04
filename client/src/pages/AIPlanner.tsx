@@ -14,7 +14,7 @@ export default function AIPlanner() {
   const { toast } = useToast();
 
   const { data: metricsData } = useQuery({
-    queryKey: ["/api/nasa/metrics", location],
+    queryKey: [`/api/nasa/metrics?location=${encodeURIComponent(location)}`],
   });
 
   const { data: insightsResponse, refetch: refetchInsights } = useQuery({
