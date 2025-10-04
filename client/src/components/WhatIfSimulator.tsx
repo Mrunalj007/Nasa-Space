@@ -5,6 +5,9 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Trees, Building2, Droplet, Zap, RefreshCw } from "lucide-react";
 import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 interface Intervention {
   id: string;
@@ -17,6 +20,8 @@ interface Intervention {
 }
 
 export function WhatIfSimulator({ className = "" }: { className?: string }) {
+  const { toast } = useToast();
+  const [simulationResult, setSimulationResult] = useState<any>(null);
   const [interventions, setInterventions] = useState<Intervention[]>([
     {
       id: "trees",
@@ -74,7 +79,38 @@ export function WhatIfSimulator({ className = "" }: { className?: string }) {
     setInterventions((prev) =>
       prev.map((item) => ({ ...item, value: 0, enabled: false }))
     );
+    setSimulationResult(null);
   };
+
+  const simulationMutation = useMutation({
+    mutationFn: async () => {
+      const activeInterventions: Record<string, number> = {};
+      interventions.forEach((int) => {
+        if (int.enabled) {
+          activeInterventions[int.id] = int.value;
+        }
+      });
+
+      return apiRequest("/api/simulations", "POST", {
+        location: "New York",
+        interventions: activeInterventions,
+      });
+    },
+    onSuccess: (data) => {
+      setSimulationResult(data);
+      toast({
+        title: "Simulation Complete",
+        description: "Your scenario has been analyzed",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to run simulation",
+        variant: "destructive",
+      });
+    },
+  });
 
   return (
     <Card className={`p-6 ${className}`} data-testid="card-simulator">
@@ -145,9 +181,34 @@ export function WhatIfSimulator({ className = "" }: { className?: string }) {
       </div>
 
       <div className="mt-6 pt-6 border-t border-border">
-        <Button className="w-full" data-testid="button-run-simulation">
-          Run Simulation
+        <Button
+          className="w-full"
+          onClick={() => simulationMutation.mutate()}
+          disabled={simulationMutation.isPending || !interventions.some((i) => i.enabled)}
+          data-testid="button-run-simulation"
+        >
+          {simulationMutation.isPending ? "Running..." : "Run Simulation"}
         </Button>
+
+        {simulationResult && (
+          <div className="mt-4 p-4 border border-border rounded-lg bg-card/50">
+            <h3 className="font-semibold mb-2">Predicted Impact</h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Air Quality Change:</span>
+                <span className="font-semibold">{simulationResult.predictions?.airQuality || "N/A"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Vegetation Index:</span>
+                <span className="font-semibold">{simulationResult.predictions?.vegetation || "N/A"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Temperature:</span>
+                <span className="font-semibold">{simulationResult.predictions?.temperature || "N/A"}</span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </Card>
   );

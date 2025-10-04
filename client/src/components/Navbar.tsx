@@ -31,17 +31,17 @@ export function Navbar() {
 
           <div className="hidden md:flex items-center gap-6">
             {navLinks.map((link) => (
-              <Link key={link.href} href={link.href}>
-                <a
-                  className={`text-sm font-medium transition-colors hover:text-primary ${
-                    location === link.href
-                      ? "text-primary"
-                      : "text-foreground/80"
-                  }`}
-                  data-testid={`link-nav-${link.label.toLowerCase().replace(" ", "-")}`}
-                >
-                  {link.label}
-                </a>
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`text-sm font-medium transition-colors hover:text-primary ${
+                  location === link.href
+                    ? "text-primary"
+                    : "text-foreground/80"
+                }`}
+                data-testid={`link-nav-${link.label.toLowerCase().replace(" ", "-")}`}
+              >
+                {link.label}
               </Link>
             ))}
           </div>
@@ -62,17 +62,17 @@ export function Navbar() {
                 <SheetContent side="right" className="w-64">
                   <div className="flex flex-col gap-4 mt-8">
                     {navLinks.map((link) => (
-                      <Link key={link.href} href={link.href}>
-                        <a
-                          onClick={() => setOpen(false)}
-                          className={`block px-4 py-2 text-sm font-medium rounded-md hover-elevate ${
-                            location === link.href
-                              ? "bg-primary/10 text-primary"
-                              : "text-foreground"
-                          }`}
-                        >
-                          {link.label}
-                        </a>
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        onClick={() => setOpen(false)}
+                        className={`block px-4 py-2 text-sm font-medium rounded-md hover-elevate ${
+                          location === link.href
+                            ? "bg-primary/10 text-primary"
+                            : "text-foreground"
+                        }`}
+                      >
+                        {link.label}
                       </Link>
                     ))}
                   </div>
