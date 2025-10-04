@@ -5,9 +5,39 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Save, Share2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 export default function AIPlanner() {
-  const mockInsights = [
+  const [location, setLocation] = useState("New York");
+  const { toast } = useToast();
+
+  const { data: metricsData } = useQuery({
+    queryKey: ["/api/nasa/metrics", location],
+  });
+
+  const { data: insightsResponse, refetch: refetchInsights } = useQuery({
+    queryKey: ["/api/ai/insights", location, metricsData],
+    enabled: false,
+  });
+
+  useEffect(() => {
+    if (metricsData) {
+      fetch("/api/ai/insights", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ location, metrics: metricsData }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          console.log("AI Insights:", data);
+        })
+        .catch((err) => console.error("Error fetching insights:", err));
+    }
+  }, [metricsData, location]);
+
+  const mockInsights = insightsResponse?.insights || [
     {
       id: "1",
       title: "Increase Green Cover in Zone 3",

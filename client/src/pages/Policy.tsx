@@ -3,16 +3,67 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Download, TrendingUp, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Policy() {
   const [generating, setGenerating] = useState(false);
+  const [location, setLocation] = useState("New York");
+  const { toast } = useToast();
 
-  const generateReport = () => {
+  const { data: metricsData } = useQuery({
+    queryKey: ["/api/nasa/metrics", location],
+  });
+
+  const generateReport = async () => {
+    if (!metricsData) {
+      toast({
+        title: "Error",
+        description: "No data available to generate report",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setGenerating(true);
-    setTimeout(() => {
+    try {
+      const response = await fetch("/api/reports/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: `Urban Planning Report - ${location}`,
+          data: {
+            metrics: metricsData,
+            insights: [],
+          },
+        }),
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `urban-planning-report-${Date.now()}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+
+        toast({
+          title: "Report Generated",
+          description: "Your report has been downloaded successfully",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to generate report",
+        variant: "destructive",
+      });
+    } finally {
       setGenerating(false);
-      console.log("Report generated");
-    }, 2000);
+    }
   };
 
   const sustainabilityScore = 73;

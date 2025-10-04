@@ -27,52 +27,80 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { useQuery } from "@tanstack/react-query";
 
 export default function Dashboard() {
   const [selectedLayers, setSelectedLayers] = useState<string[]>(["aqi"]);
+  const [location, setLocation] = useState("New York");
+  const [searchInput, setSearchInput] = useState("");
 
-  const metrics = [
-    {
-      title: "Air Quality Index",
-      value: 42,
-      unit: "AQI",
-      icon: Wind,
-      trend: { value: 12, direction: "down" as const },
-      status: "good" as const,
-    },
-    {
-      title: "Vegetation Index",
-      value: 0.68,
-      unit: "NDVI",
-      icon: Leaf,
-      trend: { value: 5, direction: "up" as const },
-      status: "good" as const,
-    },
-    {
-      title: "Temperature",
-      value: 28,
-      unit: "°C",
-      icon: Thermometer,
-      trend: { value: 3, direction: "up" as const },
-      status: "warning" as const,
-    },
-    {
-      title: "Water Quality",
-      value: 7.2,
-      unit: "pH",
-      icon: Droplet,
-      status: "good" as const,
-    },
-  ];
+  const { data: metricsData, isLoading: metricsLoading } = useQuery({
+    queryKey: ["/api/nasa/metrics", location],
+    enabled: !!location,
+  });
 
-  const chartData = [
-    { date: "Jan", value: 45 },
-    { date: "Feb", value: 52 },
-    { date: "Mar", value: 48 },
-    { date: "Apr", value: 61 },
-    { date: "May", value: 55 },
-    { date: "Jun", value: 67 },
-  ];
+  const { data: chartData } = useQuery({
+    queryKey: ["/api/nasa/historical", location, "aqi", 6],
+    enabled: !!location,
+  });
+
+  const handleSearch = () => {
+    if (searchInput.trim()) {
+      setLocation(searchInput.trim());
+    }
+  };
+
+  const getStatus = (value: number, metric: string): "good" | "warning" | "critical" => {
+    if (metric === "airQuality") {
+      if (value <= 50) return "good";
+      if (value <= 100) return "warning";
+      return "critical";
+    }
+    if (metric === "vegetationIndex") {
+      if (value >= 0.6) return "good";
+      if (value >= 0.4) return "warning";
+      return "critical";
+    }
+    if (metric === "temperature") {
+      if (value <= 30) return "good";
+      if (value <= 35) return "warning";
+      return "critical";
+    }
+    return "good";
+  };
+
+  const metrics = metricsData
+    ? [
+        {
+          title: "Air Quality Index",
+          value: metricsData.airQuality,
+          unit: "AQI",
+          icon: Wind,
+          status: getStatus(metricsData.airQuality, "airQuality"),
+        },
+        {
+          title: "Vegetation Index",
+          value: metricsData.vegetationIndex,
+          unit: "NDVI",
+          icon: Leaf,
+          status: getStatus(metricsData.vegetationIndex, "vegetationIndex"),
+        },
+        {
+          title: "Temperature",
+          value: metricsData.temperature,
+          unit: "°C",
+          icon: Thermometer,
+          status: getStatus(metricsData.temperature, "temperature"),
+        },
+        {
+          title: "Water Quality",
+          value: metricsData.waterQuality,
+          unit: "pH",
+          icon: Droplet,
+          status: "good" as const,
+        },
+      ]
+    : [];
 
   const layers = [
     { id: "aqi", label: "Air Quality", color: "bg-chart-1" },
@@ -96,13 +124,21 @@ export default function Dashboard() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
             <div className="flex-1 max-w-md">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search location or coordinates..."
-                  className="pl-10"
-                  data-testid="input-search-location"
-                />
+              <div className="relative flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search location..."
+                    className="pl-10"
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                    data-testid="input-search-location"
+                  />
+                </div>
+                <Button onClick={handleSearch} data-testid="button-search">
+                  Search
+                </Button>
               </div>
             </div>
 
@@ -154,11 +190,19 @@ export default function Dashboard() {
 
       {/* Metrics Grid */}
       <div className="container mx-auto px-4 py-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {metrics.map((metric, index) => (
-            <MetricCard key={index} {...metric} />
-          ))}
-        </div>
+        {metricsLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <Card key={i} className="min-h-32 animate-pulse bg-card" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {metrics.map((metric, index) => (
+              <MetricCard key={index} {...metric} />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Map & Charts */}
@@ -188,11 +232,17 @@ export default function Dashboard() {
           </Card>
 
           <div className="space-y-6">
-            <DataChart
-              title="Air Quality Trend"
-              data={chartData}
-              color="hsl(var(--chart-1))"
-            />
+            {chartData && chartData.length > 0 ? (
+              <DataChart
+                title={`Air Quality Trend - ${location}`}
+                data={chartData}
+                color="hsl(var(--chart-1))"
+              />
+            ) : (
+              <Card className="p-6 h-[365px] flex items-center justify-center">
+                <p className="text-muted-foreground">Loading chart data...</p>
+              </Card>
+            )}
           </div>
         </div>
       </div>

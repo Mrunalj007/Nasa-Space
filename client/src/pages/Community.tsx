@@ -6,37 +6,87 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Plus, MapPin, Clock, ThumbsUp } from "lucide-react";
 import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Community() {
-  const [reports] = useState([
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const { toast } = useToast();
+
+  const { data: reports = [] } = useQuery({
+    queryKey: ["/api/community/reports"],
+  });
+
+  const createReportMutation = useMutation({
+    mutationFn: async (data: any) =>
+      apiRequest("/api/community/reports", "POST", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/community/reports"] });
+      setDialogOpen(false);
+      toast({
+        title: "Report submitted",
+        description: "Your community report has been submitted successfully.",
+      });
+    },
+  });
+
+  const upvoteMutation = useMutation({
+    mutationFn: async (id: string) =>
+      apiRequest(`/api/community/reports/${id}/upvote`, "POST"),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/community/reports"] });
+    },
+  });
+
+  const formatTimestamp = (date: Date | string) => {
+    const now = new Date();
+    const reportDate = new Date(date);
+    const diffMs = now.getTime() - reportDate.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffHours < 1) return "Just now";
+    if (diffHours < 24) return `${diffHours} hours ago`;
+    if (diffDays === 1) return "1 day ago";
+    return `${diffDays} days ago`;
+  };
+
+  const displayReports = reports.length > 0 ? reports : [
     {
       id: "1",
       category: "Air Quality",
       location: "123 Main St, Downtown",
       description: "Heavy smoke detected near industrial area causing breathing issues.",
-      timestamp: "2 hours ago",
+      createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
       upvotes: 24,
       status: "under-review",
+      latitude: null,
+      longitude: null,
     },
     {
       id: "2",
       category: "Green Space",
       location: "Central Park Area",
       description: "Request for more benches and shade structures in the park.",
-      timestamp: "5 hours ago",
+      createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000),
       upvotes: 15,
       status: "in-progress",
+      latitude: null,
+      longitude: null,
     },
     {
       id: "3",
       category: "Water",
       location: "River Road",
       description: "Water quality concern - unusual color observed in the river.",
-      timestamp: "1 day ago",
+      createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
       upvotes: 32,
       status: "resolved",
+      latitude: null,
+      longitude: null,
     },
-  ]);
+  ];
 
   const statusColors = {
     "under-review": "bg-chart-3/10 text-chart-3 border-chart-3/20",
@@ -55,7 +105,7 @@ export default function Community() {
                 Report issues and engage with your community
               </p>
             </div>
-            <Dialog>
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
                 <Button data-testid="button-new-report">
                   <Plus className="h-4 w-4 mr-2" />
@@ -64,7 +114,7 @@ export default function Community() {
               </DialogTrigger>
               <DialogContent className="max-w-2xl">
                 <h2 className="text-2xl font-bold mb-6">Report an Issue</h2>
-                <CommunityReport />
+                <CommunityReport onSubmit={(data) => createReportMutation.mutate(data)} />
               </DialogContent>
             </Dialog>
           </div>
@@ -88,7 +138,7 @@ export default function Community() {
             <Card className="p-4">
               <h3 className="font-semibold mb-4">Recent Reports</h3>
               <div className="space-y-3">
-                {reports.map((report) => (
+                {displayReports.map((report) => (
                   <div
                     key={report.id}
                     className="border border-border rounded-lg p-4 hover-elevate cursor-pointer"
@@ -123,12 +173,13 @@ export default function Community() {
                     <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
                       <div className="flex items-center gap-1 text-xs text-muted-foreground">
                         <Clock className="h-3 w-3" />
-                        <span>{report.timestamp}</span>
+                        <span>{formatTimestamp(report.createdAt)}</span>
                       </div>
                       <Button
                         variant="ghost"
                         size="sm"
                         className="h-7 text-xs"
+                        onClick={() => upvoteMutation.mutate(report.id)}
                         data-testid={`button-upvote-${report.id}`}
                       >
                         <ThumbsUp className="h-3 w-3 mr-1" />
