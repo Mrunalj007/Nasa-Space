@@ -1,8 +1,6 @@
-import OpenAI from "openai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 interface EnvironmentalData {
   airQuality: number;
@@ -28,6 +26,8 @@ interface SimulationPrediction {
 }
 
 export class AIService {
+  private model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+
   async generateInsights(data: EnvironmentalData): Promise<AIInsight[]> {
     try {
       const prompt = `As an urban planning AI assistant, analyze this environmental data for ${data.location}:
@@ -43,28 +43,28 @@ Generate 3 specific, actionable recommendations for urban planning improvements.
 3. Severity level (low, medium, or high)
 4. Detailed recommendation with estimated costs and expected impact
 
-Format as JSON array with fields: title, description, severity, recommendation`;
+Respond ONLY with a valid JSON object in this exact format:
+{
+  "insights": [
+    {
+      "title": "string",
+      "description": "string", 
+      "severity": "low|medium|high",
+      "recommendation": "string"
+    }
+  ]
+}`;
 
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content: "You are an expert urban planning AI that provides data-driven recommendations for sustainable city development.",
-          },
-          {
-            role: "user",
-            content: prompt,
-          },
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0.7,
-      });
+      const result = await this.model.generateContent(prompt);
+      const response = result.response;
+      const text = response.text();
 
-      const response = completion.choices[0].message.content;
-      if (!response) throw new Error("No response from OpenAI");
+      if (!text) throw new Error("No response from Gemini");
 
-      const parsed = JSON.parse(response);
+      // Clean the response to ensure it's valid JSON
+      const cleanedText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      
+      const parsed = JSON.parse(cleanedText);
       const insights = parsed.insights || parsed.recommendations || [];
 
       return insights.map((insight: any, index: number) => ({
@@ -75,7 +75,7 @@ Format as JSON array with fields: title, description, severity, recommendation`;
         recommendation: insight.recommendation,
       }));
     } catch (error) {
-      console.error("OpenAI API error:", error);
+      console.error("Gemini API error:", error);
       return this.getFallbackInsights(data);
     }
   }

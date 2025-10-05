@@ -76,21 +76,11 @@ export default function Home() {
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
       <section className="relative h-[70vh] flex items-center justify-center overflow-hidden">
-        <style>{`
-          @keyframes rotate-earth {
-            from {
-              transform: rotate(0deg) scale(1.2);
-            }
-            to {
-              transform: rotate(360deg) scale(1.2);
-            }
-          }
-        `}</style>
         <div
           className="absolute inset-0 bg-cover bg-center"
           style={{ 
             backgroundImage: `url(${heroImage})`,
-            animation: 'rotate-earth 120s linear infinite'
+            transform: 'scale(1.2)'
           }}
         />
         <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/80 to-background" />

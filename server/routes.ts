@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { nasaService } from "./services/nasa";
-import { aiService } from "./services/openai";
+import { aiService } from "./services/gemini";
 import { insertCommunityReportSchema, insertSimulationSchema } from "@shared/schema";
 import jsPDF from "jspdf";
 
